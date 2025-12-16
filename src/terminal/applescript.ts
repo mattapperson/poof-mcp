@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import { readFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { screenshot } from "screenshot-ftw";
 
 const PERMISSIONS_ERROR_MESSAGE = `
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -301,29 +302,16 @@ To fix this:
 Alternative: Use get_screen_text instead of get_screenshot
 `.trim();
 
-export function captureScreenshot(): { data: string; mimeType: string } {
-  const tmpFile = join(tmpdir(), `poof-mcp-screenshot-${Date.now()}.jpg`);
+export async function captureScreenshot(): Promise<{ data: string; mimeType: string }> {
+  const tmpFile = join(tmpdir(), `poof-mcp-screenshot-${Date.now()}.png`);
 
   // First, make sure Terminal is frontmost
   activateTerminal();
 
   try {
-    // Get the CGWindowID for Terminal's front window using a Swift one-liner
-    // AppleScript's window ID is different from CGWindowID that screencapture needs
-    const cgWindowId = execSync(
-      `swift -e 'import Cocoa; let opts = CGWindowListOption(arrayLiteral: .optionOnScreenOnly); if let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] { for w in list { if let owner = w["kCGWindowOwnerName"] as? String, owner == "Terminal", let id = w["kCGWindowNumber"] as? Int { print(id); break } } }'`,
-      { encoding: "utf-8", timeout: 5000 }
-    ).trim();
-
-    if (!cgWindowId) {
-      throw new Error("Could not find Terminal window");
-    }
-
-    // Capture using the CGWindowID
-    execSync(`screencapture -l${cgWindowId} -x -o -t jpg "${tmpFile}"`, {
-      stdio: "pipe",
-      timeout: 10000,
-    });
+    // Use screenshot-ftw to capture the Terminal window by title
+    // This library handles CGWindowID lookup internally
+    await screenshot.captureWindowByTitle(tmpFile, "Terminal");
 
     // Read the file and convert to base64
     const buffer = readFileSync(tmpFile);
@@ -331,12 +319,12 @@ export function captureScreenshot(): { data: string; mimeType: string } {
 
     return {
       data: base64,
-      mimeType: "image/jpeg",
+      mimeType: "image/png",
     };
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
     // Check if it's a screen recording permission issue
-    if (errMsg.includes("could not create image")) {
+    if (errMsg.includes("could not create image") || errMsg.includes("permission")) {
       throw new Error(SCREEN_RECORDING_ERROR);
     }
     throw new Error(`Could not capture screenshot: ${errMsg}`);

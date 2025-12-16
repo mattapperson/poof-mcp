@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",
+    "screenshot-ftw": "^1.0.5",
     "zod": "^4.2.1"
   }
 }

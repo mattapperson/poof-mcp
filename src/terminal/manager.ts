@@ -68,7 +68,7 @@ export class TerminalManager {
     return applescript.getTerminalContent();
   }
 
-  getScreenshot(sessionName: string): ScreenshotResult {
+  async getScreenshot(sessionName: string): Promise<ScreenshotResult> {
     this.ensureSessionOpen(sessionName);
     return applescript.captureScreenshot();
   }
