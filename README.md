@@ -30,7 +30,7 @@ mv zmx ~/.local/bin/
 
 ### 2. macOS Permissions
 
-poof-mcp uses AppleScript to control Terminal.app, which requires permissions:
+poof-mcp uses AppleScript and screencapture to control Terminal.app, which requires permissions:
 
 1. **System Settings → Privacy & Security → Accessibility**
    - Add and enable the app running the MCP server (e.g., Claude, Terminal, iTerm2, VS Code)
@@ -38,9 +38,13 @@ poof-mcp uses AppleScript to control Terminal.app, which requires permissions:
 2. **System Settings → Privacy & Security → Automation**
    - Allow the app to control **Terminal.app**
 
-3. If prompted with a permissions dialog, click **OK** or **Allow**
+3. **System Settings → Privacy & Security → Screen Recording** (for screenshots)
+   - Add and enable the app running the MCP server
+   - Required only for `get_screenshot` tool; `get_screen_text` works without this
 
-> **Note**: The MCP server checks for permissions on startup and will display clear instructions if they're missing.
+4. If prompted with a permissions dialog, click **OK** or **Allow**
+
+> **Note**: The MCP server returns clear error messages when permissions are missing.
 
 ## Installation
 

@@ -70,7 +70,7 @@ export class TerminalManager {
 
   getScreenshot(sessionName: string): ScreenshotResult {
     this.ensureSessionOpen(sessionName);
-    return applescript.captureScreenshot(this.windowId ?? undefined);
+    return applescript.captureScreenshot();
   }
 
   private ensureSessionOpen(sessionName: string): void {
