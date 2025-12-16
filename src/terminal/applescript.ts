@@ -3,6 +3,7 @@ import { readFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { screenshot } from "screenshot-ftw";
+import { getAuthStatus, askForScreenCaptureAccess, askForAccessibilityAccess } from "node-mac-permissions";
 
 const PERMISSIONS_ERROR_MESSAGE = `
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -303,57 +304,35 @@ Alternative: Use get_screen_text instead of get_screenshot
 `.trim();
 
 /**
- * Check if Screen Recording permission is granted and attempt to trigger the permission dialog.
- * Returns true if permission is granted, false otherwise.
- * On first run, this may trigger the system permission dialog.
+ * Check if Screen Recording permission is granted.
+ * Returns the status: 'authorized', 'denied', 'not determined', or 'restricted'
  */
-export async function checkScreenRecordingPermission(): Promise<boolean> {
-  try {
-    // Use ScreenCaptureKit to check/trigger permission
-    // This will show the permission dialog if not yet prompted
-    const result = execSync(
-      `swift -e '
-import ScreenCaptureKit
-import Foundation
-
-let semaphore = DispatchSemaphore(value: 0)
-var hasPermission = false
-
-Task {
-    do {
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-        hasPermission = content.windows.count > 0
-    } catch {
-        hasPermission = false
-    }
-    semaphore.signal()
-}
-
-semaphore.wait()
-print(hasPermission ? "granted" : "denied")
-'`,
-      { encoding: "utf-8", timeout: 10000 }
-    ).trim();
-    return result === "granted";
-  } catch {
-    return false;
-  }
+export function getScreenRecordingStatus(): string {
+  return getAuthStatus("screen");
 }
 
 /**
- * Open System Settings to the Screen Recording privacy panel
+ * Request Screen Recording permission.
+ * On first call, shows the permission dialog.
+ * On subsequent calls (if denied), opens System Settings.
  */
-export function openScreenRecordingSettings(): void {
-  try {
-    execSync('open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"', {
-      stdio: "pipe",
-    });
-  } catch {
-    // Fallback to general privacy settings
-    execSync('open "x-apple.systempreferences:com.apple.preference.security?Privacy"', {
-      stdio: "pipe",
-    });
-  }
+export function requestScreenRecordingAccess(): void {
+  askForScreenCaptureAccess();
+}
+
+/**
+ * Check if Accessibility permission is granted.
+ * Returns the status: 'authorized', 'denied', 'not determined', or 'restricted'
+ */
+export function getAccessibilityStatus(): string {
+  return getAuthStatus("accessibility");
+}
+
+/**
+ * Request Accessibility permission (opens System Settings).
+ */
+export function requestAccessibilityAccess(): void {
+  askForAccessibilityAccess();
 }
 
 function getTerminalCGWindowId(): number | null {
@@ -376,16 +355,23 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
   // First, make sure Terminal is frontmost
   activateTerminal();
 
-  // Check/request screen recording permission first
-  const hasPermission = await checkScreenRecordingPermission();
-  if (!hasPermission) {
-    // Open System Settings to the Screen Recording panel
-    openScreenRecordingSettings();
-    throw new Error(
-      SCREEN_RECORDING_ERROR +
-        "\n\nSystem Settings has been opened to the Screen Recording panel. " +
-        "Please add this app and restart."
-    );
+  // Check screen recording permission
+  const screenStatus = getScreenRecordingStatus();
+  if (screenStatus !== "authorized") {
+    // Request permission - this will show dialog on first call, or open Settings if denied
+    requestScreenRecordingAccess();
+
+    if (screenStatus === "not determined") {
+      throw new Error(
+        "Screen Recording permission requested. Please allow access in the dialog that appeared, then try again."
+      );
+    } else {
+      throw new Error(
+        SCREEN_RECORDING_ERROR +
+          "\n\nSystem Settings has been opened to the Screen Recording panel. " +
+          "Please add this app and restart."
+      );
+    }
   }
 
   try {
@@ -420,7 +406,7 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
 
     // Check if it's a permission issue
     if (errMsg.includes("could not create image") || errMsg.includes("permission")) {
-      openScreenRecordingSettings();
+      requestScreenRecordingAccess();
       throw new Error(SCREEN_RECORDING_ERROR);
     }
     throw new Error(`Could not capture screenshot: ${errMsg}`);
