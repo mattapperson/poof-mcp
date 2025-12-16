@@ -12,9 +12,8 @@ export class TerminalManager {
         "zmx is not installed. Please install it from https://github.com/neurosnap/zmx"
       );
     }
-
-    // Check macOS permissions on startup
-    applescript.checkPermissions();
+    // Note: We don't check AppleScript permissions here because errors
+    // should be returned in tool responses so the model can see them
   }
 
   createSession(sessionName: string): { sessionName: string; windowId: number } {
