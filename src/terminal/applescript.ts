@@ -294,13 +294,15 @@ end tell
 const SCREEN_RECORDING_ERROR = `
 Screenshot failed - Screen Recording permission required.
 
-To fix this:
-1. Open System Settings → Privacy & Security → Screen Recording
-2. Add and enable the app running this MCP server
-   (e.g., Claude, Terminal, iTerm2, VS Code)
-3. Restart the app after granting permission
+The HOST APPLICATION running this MCP server needs Screen Recording permission.
+This is typically Claude Desktop, VS Code, or Terminal - not the MCP server itself.
 
-Alternative: Use get_screen_text instead of get_screenshot
+To fix this:
+1. System Settings should have opened automatically
+2. Find and enable the app you're using (e.g., "Claude" or "Code")
+3. You may need to restart that app after granting permission
+
+Alternative: Use get_screen_text tool instead (no permission required)
 `.trim();
 
 /**
@@ -355,25 +357,6 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
   // First, make sure Terminal is frontmost
   activateTerminal();
 
-  // Check screen recording permission
-  const screenStatus = getScreenRecordingStatus();
-  if (screenStatus !== "authorized") {
-    // Request permission - this will show dialog on first call, or open Settings if denied
-    requestScreenRecordingAccess();
-
-    if (screenStatus === "not determined") {
-      throw new Error(
-        "Screen Recording permission requested. Please allow access in the dialog that appeared, then try again."
-      );
-    } else {
-      throw new Error(
-        SCREEN_RECORDING_ERROR +
-          "\n\nSystem Settings has been opened to the Screen Recording panel. " +
-          "Please add this app and restart."
-      );
-    }
-  }
-
   try {
     // Get the CGWindowID for Terminal's front window
     const windowId = getTerminalCGWindowId();
@@ -382,6 +365,7 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
     }
 
     // Use screenshot-ftw to capture by window ID
+    // This will trigger the native permission dialog on first attempt
     await screenshot.captureWindowById(tmpFile, windowId);
 
     // Read the file and convert to base64
@@ -406,8 +390,12 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
 
     // Check if it's a permission issue
     if (errMsg.includes("could not create image") || errMsg.includes("permission")) {
+      // Open System Settings to the Screen Recording panel
       requestScreenRecordingAccess();
-      throw new Error(SCREEN_RECORDING_ERROR);
+      throw new Error(
+        SCREEN_RECORDING_ERROR +
+          "\n\nSystem Settings has been opened to the Screen Recording panel."
+      );
     }
     throw new Error(`Could not capture screenshot: ${errMsg}`);
   } finally {
