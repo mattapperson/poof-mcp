@@ -302,6 +302,20 @@ To fix this:
 Alternative: Use get_screen_text instead of get_screenshot
 `.trim();
 
+function getTerminalCGWindowId(): number | null {
+  try {
+    // Use Swift to get the CGWindowID for Terminal's front window
+    // CGWindowID is different from AppleScript's window ID and is required for screencapture
+    const result = execSync(
+      `swift -e 'import Cocoa; let opts = CGWindowListOption(arrayLiteral: .optionOnScreenOnly); if let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] { for w in list { if let owner = w["kCGWindowOwnerName"] as? String, owner == "Terminal", let layer = w["kCGWindowLayer"] as? Int, layer == 0, let id = w["kCGWindowNumber"] as? Int { print(id); break } } }'`,
+      { encoding: "utf-8", timeout: 5000 }
+    ).trim();
+    return result ? parseInt(result, 10) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function captureScreenshot(): Promise<{ data: string; mimeType: string }> {
   const tmpFile = join(tmpdir(), `poof-mcp-screenshot-${Date.now()}.png`);
 
@@ -309,9 +323,14 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
   activateTerminal();
 
   try {
-    // Use screenshot-ftw to capture the Terminal window by title
-    // This library handles CGWindowID lookup internally
-    await screenshot.captureWindowByTitle(tmpFile, "Terminal");
+    // Get the CGWindowID for Terminal's front window
+    const windowId = getTerminalCGWindowId();
+    if (!windowId) {
+      throw new Error("Could not find Terminal window. Make sure Terminal is open.");
+    }
+
+    // Use screenshot-ftw to capture by window ID
+    await screenshot.captureWindowById(tmpFile, windowId);
 
     // Read the file and convert to base64
     const buffer = readFileSync(tmpFile);
@@ -321,9 +340,19 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
       data: base64,
       mimeType: "image/png",
     };
-  } catch (e) {
-    const errMsg = e instanceof Error ? e.message : String(e);
-    // Check if it's a screen recording permission issue
+  } catch (e: unknown) {
+    // screenshot-ftw returns {code, stdout, stderr} on error
+    let errMsg: string;
+    if (e && typeof e === "object" && "stdout" in e) {
+      const result = e as { code: number; stdout: string; stderr: string };
+      errMsg = result.stdout || result.stderr || `Exit code ${result.code}`;
+    } else if (e instanceof Error) {
+      errMsg = e.message;
+    } else {
+      errMsg = String(e);
+    }
+
+    // Check if it's a permission issue
     if (errMsg.includes("could not create image") || errMsg.includes("permission")) {
       throw new Error(SCREEN_RECORDING_ERROR);
     }
