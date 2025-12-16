@@ -14,7 +14,8 @@ An MCP (Model Context Protocol) server that provides AI agents with real termina
 
 ## Prerequisites
 
-**zmx** - Terminal session manager:
+### 1. zmx - Terminal session manager
+
 ```bash
 # macOS (Apple Silicon)
 curl -LO https://zmx.sh/a/zmx-0.0.2-macos-aarch64.tar.gz
@@ -26,6 +27,20 @@ curl -LO https://zmx.sh/a/zmx-0.0.2-macos-x86_64.tar.gz
 tar -xzf zmx-0.0.2-macos-x86_64.tar.gz
 mv zmx ~/.local/bin/
 ```
+
+### 2. macOS Permissions
+
+poof-mcp uses AppleScript to control Terminal.app, which requires permissions:
+
+1. **System Settings → Privacy & Security → Accessibility**
+   - Add and enable the app running the MCP server (e.g., Claude, Terminal, iTerm2, VS Code)
+
+2. **System Settings → Privacy & Security → Automation**
+   - Allow the app to control **Terminal.app**
+
+3. If prompted with a permissions dialog, click **OK** or **Allow**
+
+> **Note**: The MCP server checks for permissions on startup and will display clear instructions if they're missing.
 
 ## Installation
 
