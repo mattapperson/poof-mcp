@@ -9,8 +9,7 @@
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "chmod +x bin/poof-mcp",
-    "postinstall": "bun pm trust node-mac-permissions --all || true"
+    "build": "chmod +x bin/poof-mcp"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -20,11 +19,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",
-    "node-mac-permissions": "^2.5.0",
-    "screenshot-ftw": "^1.0.5",
     "zod": "^4.2.1"
-  },
-  "trustedDependencies": [
-    "node-mac-permissions"
-  ]
+  }
 }

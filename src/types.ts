@@ -10,11 +10,6 @@ export interface TerminalWindow {
   sessionName: string;
 }
 
-export interface ScreenshotResult {
-  data: string; // base64 encoded
-  mimeType: string;
-}
-
 export interface SessionStatus {
   sessionName: string | null;
   isActive: boolean;

@@ -22,9 +22,8 @@ This server allows you to:
 - Open sessions in visible Terminal.app windows
 - Send keystrokes and type text into the terminal
 - Read terminal screen content
-- Capture screenshots of Terminal windows
 
-Use create_session to start a new terminal session, then interact with it using send_keystrokes, type_text, get_screen_text, and get_screenshot.`,
+Use create_session to start a new terminal session, then interact with it using send_keystrokes, type_text, and get_screen_text.`,
     }
   );
 
@@ -88,39 +87,6 @@ Use create_session to start a new terminal session, then interact with it using 
             {
               type: "text" as const,
               text: `Error typing text: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  // Tool: get_screenshot
-  server.tool(
-    "get_screenshot",
-    "Get screen as base64 PNG. Opens the terminal if not already open.",
-    {
-      session_name: z.string().describe("Name of the session to capture"),
-    },
-    async ({ session_name }) => {
-      try {
-        const screenshot = await terminalManager.getScreenshot(session_name);
-        return {
-          content: [
-            {
-              type: "image" as const,
-              data: screenshot.data,
-              mimeType: screenshot.mimeType,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error capturing screenshot: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           isError: true,

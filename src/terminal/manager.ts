@@ -1,4 +1,4 @@
-import type { SessionStatus, ScreenshotResult, ZmxSession } from "../types";
+import type { SessionStatus, ZmxSession } from "../types";
 import * as zmx from "./zmx";
 import * as applescript from "./applescript";
 
@@ -66,11 +66,6 @@ export class TerminalManager {
   getScreenText(sessionName: string): string {
     this.ensureSessionOpen(sessionName);
     return applescript.getTerminalContent();
-  }
-
-  async getScreenshot(sessionName: string): Promise<ScreenshotResult> {
-    this.ensureSessionOpen(sessionName);
-    return applescript.captureScreenshot();
   }
 
   private ensureSessionOpen(sessionName: string): void {

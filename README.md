@@ -8,7 +8,7 @@ An MCP (Model Context Protocol) server that provides AI agents with real termina
 - **Visible Terminal.app windows** - watch the AI work in real-time
 - **Keystroke control** - send individual keys or modifier combinations
 - **Text typing** - fast text input
-- **Screen capture** - get terminal text or JPEG screenshots
+- **Screen text capture** - read terminal content as plain text
 - **Wait helpers** - wait for text or screen stability
 - **Resize & restart** - control terminal dimensions and restart sessions
 
@@ -30,13 +30,12 @@ mv zmx ~/.local/bin/
 
 ### 2. macOS Permissions
 
-poof-mcp uses AppleScript and screencapture to control Terminal.app, which requires permissions:
+poof-mcp uses AppleScript to control Terminal.app, which requires permissions:
 
 1. **Accessibility** - Required for keyboard input
 2. **Automation** - Required to control Terminal.app
-3. **Screen Recording** - Required for `get_screenshot` tool
 
-> **Note**: The MCP server will automatically request permissions when needed. On first use, you'll see native macOS permission dialogs. If permissions were previously denied, the server will open System Settings to the correct panel.
+> **Note**: On first use, you may see macOS permission dialogs. Grant access to the app running the MCP server (e.g., Claude, VS Code, Terminal).
 
 ## Installation
 
@@ -85,7 +84,6 @@ Or add to `~/.claude/claude_desktop_config.json`:
 |------|-------------|
 | `send_keystrokes` | Send key presses (e.g., `["enter"]`, `["up", "up", "enter"]`) |
 | `type_text` | Type a string |
-| `get_screenshot` | Get screen as base64 PNG |
 | `get_screen_text` | Get screen as plain text |
 | `get_status` | Get terminal status |
 | `list_sessions` | List active sessions |
@@ -130,8 +128,7 @@ macOS Terminal.app + zmx session
 
 1. **Session Management**: Uses [zmx](https://github.com/neurosnap/zmx) for terminal session persistence
 2. **Terminal Control**: AppleScript controls macOS Terminal.app for keystrokes and text input
-3. **Screen Capture**: Uses [screenshot-ftw](https://github.com/nicholasio/screenshot-ftw) to capture Terminal window as PNG
-4. **Text Extraction**: AppleScript reads Terminal.app content directly
+3. **Text Extraction**: AppleScript reads Terminal.app content directly
 
 ## License
 
