@@ -3,35 +3,111 @@ import { readFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-function runAppleScript(script: string): string {
+const PERMISSIONS_ERROR_MESSAGE = `
+┌─────────────────────────────────────────────────────────────────────┐
+│  PERMISSIONS REQUIRED                                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  poof-mcp needs macOS permissions to control Terminal.app           │
+│                                                                     │
+│  To fix this:                                                       │
+│                                                                     │
+│  1. Open System Settings → Privacy & Security → Accessibility       │
+│     • Add and enable the app running this MCP server                │
+│       (e.g., Claude, Terminal, iTerm2, VS Code)                     │
+│                                                                     │
+│  2. Open System Settings → Privacy & Security → Automation          │
+│     • Allow the app to control "Terminal.app"                       │
+│                                                                     │
+│  3. If prompted with a dialog, click "OK" or "Allow"                │
+│                                                                     │
+│  After granting permissions, restart the MCP server.                │
+└─────────────────────────────────────────────────────────────────────┘
+`.trim();
+
+class PermissionsError extends Error {
+  constructor() {
+    super(PERMISSIONS_ERROR_MESSAGE);
+    this.name = "PermissionsError";
+  }
+}
+
+function runAppleScript(script: string, timeoutMs: number = 5000): string {
   try {
     const result = execSync(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      timeout: timeoutMs,
     });
     return result.trim();
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "stderr" in error) {
-      throw new Error(`AppleScript error: ${(error as { stderr: string }).stderr}`);
+    if (error && typeof error === "object") {
+      // Check for timeout (happens when waiting for permissions dialog)
+      if ("killed" in error && error.killed) {
+        throw new PermissionsError();
+      }
+      if ("signal" in error && error.signal === "SIGTERM") {
+        throw new PermissionsError();
+      }
+      if ("stderr" in error) {
+        const stderr = (error as { stderr: string }).stderr;
+        // Check for common permission-related errors
+        if (stderr.includes("not allowed") || stderr.includes("assistive access") || stderr.includes("permission")) {
+          throw new PermissionsError();
+        }
+        throw new Error(`AppleScript error: ${stderr}`);
+      }
     }
     throw error;
   }
 }
 
-function runMultilineAppleScript(script: string): string {
+function runMultilineAppleScript(script: string, timeoutMs: number = 5000): string {
   try {
     // For multiline scripts, pass via stdin
     const result = execSync("osascript", {
       input: script,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      timeout: timeoutMs,
     });
     return result.trim();
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "stderr" in error) {
-      throw new Error(`AppleScript error: ${(error as { stderr: string }).stderr}`);
+    if (error && typeof error === "object") {
+      // Check for timeout (happens when waiting for permissions dialog)
+      if ("killed" in error && error.killed) {
+        throw new PermissionsError();
+      }
+      if ("signal" in error && error.signal === "SIGTERM") {
+        throw new PermissionsError();
+      }
+      if ("stderr" in error) {
+        const stderr = (error as { stderr: string }).stderr;
+        // Check for common permission-related errors
+        if (stderr.includes("not allowed") || stderr.includes("assistive access") || stderr.includes("permission")) {
+          throw new PermissionsError();
+        }
+        throw new Error(`AppleScript error: ${stderr}`);
+      }
     }
     throw error;
+  }
+}
+
+/**
+ * Check if we have the necessary macOS permissions to control Terminal.app
+ * Returns true if permissions are granted, throws PermissionsError if not
+ */
+export function checkPermissions(): boolean {
+  try {
+    // Simple test: try to get Terminal's name (doesn't require a window)
+    runAppleScript('tell application "Terminal" to return name', 3000);
+    return true;
+  } catch (error) {
+    if (error instanceof PermissionsError) {
+      throw error;
+    }
+    // If it's another error, permissions might still be the issue
+    throw new PermissionsError();
   }
 }
 
