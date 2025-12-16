@@ -302,6 +302,60 @@ To fix this:
 Alternative: Use get_screen_text instead of get_screenshot
 `.trim();
 
+/**
+ * Check if Screen Recording permission is granted and attempt to trigger the permission dialog.
+ * Returns true if permission is granted, false otherwise.
+ * On first run, this may trigger the system permission dialog.
+ */
+export async function checkScreenRecordingPermission(): Promise<boolean> {
+  try {
+    // Use ScreenCaptureKit to check/trigger permission
+    // This will show the permission dialog if not yet prompted
+    const result = execSync(
+      `swift -e '
+import ScreenCaptureKit
+import Foundation
+
+let semaphore = DispatchSemaphore(value: 0)
+var hasPermission = false
+
+Task {
+    do {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        hasPermission = content.windows.count > 0
+    } catch {
+        hasPermission = false
+    }
+    semaphore.signal()
+}
+
+semaphore.wait()
+print(hasPermission ? "granted" : "denied")
+'`,
+      { encoding: "utf-8", timeout: 10000 }
+    ).trim();
+    return result === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Open System Settings to the Screen Recording privacy panel
+ */
+export function openScreenRecordingSettings(): void {
+  try {
+    execSync('open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"', {
+      stdio: "pipe",
+    });
+  } catch {
+    // Fallback to general privacy settings
+    execSync('open "x-apple.systempreferences:com.apple.preference.security?Privacy"', {
+      stdio: "pipe",
+    });
+  }
+}
+
 function getTerminalCGWindowId(): number | null {
   try {
     // Use Swift to get the CGWindowID for Terminal's front window
@@ -321,6 +375,18 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
 
   // First, make sure Terminal is frontmost
   activateTerminal();
+
+  // Check/request screen recording permission first
+  const hasPermission = await checkScreenRecordingPermission();
+  if (!hasPermission) {
+    // Open System Settings to the Screen Recording panel
+    openScreenRecordingSettings();
+    throw new Error(
+      SCREEN_RECORDING_ERROR +
+        "\n\nSystem Settings has been opened to the Screen Recording panel. " +
+        "Please add this app and restart."
+    );
+  }
 
   try {
     // Get the CGWindowID for Terminal's front window
@@ -354,6 +420,7 @@ export async function captureScreenshot(): Promise<{ data: string; mimeType: str
 
     // Check if it's a permission issue
     if (errMsg.includes("could not create image") || errMsg.includes("permission")) {
+      openScreenRecordingSettings();
       throw new Error(SCREEN_RECORDING_ERROR);
     }
     throw new Error(`Could not capture screenshot: ${errMsg}`);
