@@ -74,8 +74,16 @@ export class TerminalManager {
       throw new Error(`Session "${sessionName}" does not exist. Use create_session first.`);
     }
 
-    // If this is a different session or no window is open, open the terminal
-    if (this.currentSession !== sessionName || !this.windowId) {
+    // Check if we need to open a terminal window:
+    // 1. Different session than what we're tracking
+    // 2. No window ID tracked
+    // 3. No Terminal window is actually open (user may have closed it)
+    const needsWindow =
+      this.currentSession !== sessionName ||
+      !this.windowId ||
+      !applescript.isTerminalWindowOpen();
+
+    if (needsWindow) {
       const windowId = applescript.openTerminalWithSession(sessionName);
       this.currentSession = sessionName;
       this.windowId = windowId;

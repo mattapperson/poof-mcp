@@ -140,6 +140,20 @@ end tell
   }
 }
 
+export function isTerminalWindowOpen(): boolean {
+  try {
+    const script = `
+tell application "Terminal"
+    return (count of windows) > 0
+end tell
+`;
+    const result = runMultilineAppleScript(script);
+    return result === "true";
+  } catch {
+    return false;
+  }
+}
+
 export function activateTerminal(): void {
   runAppleScript('tell application "Terminal" to activate');
 }
