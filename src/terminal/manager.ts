@@ -63,21 +63,36 @@ export class TerminalManager {
     return text.length;
   }
 
-  getScreenText(): string {
+  getScreenText(sessionName: string): string {
+    this.ensureSessionOpen(sessionName);
     return applescript.getTerminalContent();
   }
 
-  getScreenshot(): ScreenshotResult {
-    // Try to get current window ID if we don't have one
-    if (!this.windowId) {
-      this.windowId = applescript.getTerminalWindowId();
-    }
+  getScreenshot(sessionName: string): ScreenshotResult {
+    this.ensureSessionOpen(sessionName);
 
     if (!this.windowId) {
       throw new Error("No Terminal window is open");
     }
 
     return applescript.captureScreenshot(this.windowId);
+  }
+
+  private ensureSessionOpen(sessionName: string): void {
+    // Check if session exists
+    if (!zmx.sessionExists(sessionName)) {
+      throw new Error(`Session "${sessionName}" does not exist. Use create_session first.`);
+    }
+
+    // If this is a different session or no window is open, open the terminal
+    if (this.currentSession !== sessionName || !this.windowId) {
+      const windowId = applescript.openTerminalWithSession(sessionName);
+      this.currentSession = sessionName;
+      this.windowId = windowId;
+    }
+
+    // Ensure terminal is active
+    this.ensureTerminalActive();
   }
 
   getStatus(): SessionStatus {

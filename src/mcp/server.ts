@@ -99,11 +99,13 @@ Use create_session to start a new terminal session, then interact with it using 
   // Tool: get_screenshot
   server.tool(
     "get_screenshot",
-    "Get screen as base64 JPEG",
-    {},
-    async () => {
+    "Get screen as base64 JPEG. Opens the terminal if not already open.",
+    {
+      session_name: z.string().describe("Name of the session to capture"),
+    },
+    async ({ session_name }) => {
       try {
-        const screenshot = terminalManager.getScreenshot();
+        const screenshot = terminalManager.getScreenshot(session_name);
         return {
           content: [
             {
@@ -130,11 +132,13 @@ Use create_session to start a new terminal session, then interact with it using 
   // Tool: get_screen_text
   server.tool(
     "get_screen_text",
-    "Get screen as plain text",
-    {},
-    async () => {
+    "Get screen as plain text. Opens the terminal if not already open.",
+    {
+      session_name: z.string().describe("Name of the session to read"),
+    },
+    async ({ session_name }) => {
       try {
-        const text = terminalManager.getScreenText();
+        const text = terminalManager.getScreenText(session_name);
         return {
           content: [
             {
