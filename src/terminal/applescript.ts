@@ -1,0 +1,265 @@
+import { execSync } from "child_process";
+import { readFileSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+
+function runAppleScript(script: string): string {
+  try {
+    const result = execSync(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return result.trim();
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "stderr" in error) {
+      throw new Error(`AppleScript error: ${(error as { stderr: string }).stderr}`);
+    }
+    throw error;
+  }
+}
+
+function runMultilineAppleScript(script: string): string {
+  try {
+    // For multiline scripts, pass via stdin
+    const result = execSync("osascript", {
+      input: script,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return result.trim();
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "stderr" in error) {
+      throw new Error(`AppleScript error: ${(error as { stderr: string }).stderr}`);
+    }
+    throw error;
+  }
+}
+
+export function openTerminalWithSession(sessionName: string): number {
+  const script = `
+tell application "Terminal"
+    activate
+    set newTab to do script "zmx attach ${sessionName}"
+    delay 0.5
+    return id of front window
+end tell
+`;
+  const windowId = runMultilineAppleScript(script);
+  return parseInt(windowId, 10);
+}
+
+export function getTerminalWindowId(): number | null {
+  try {
+    const script = `
+tell application "Terminal"
+    if (count of windows) > 0 then
+        return id of front window
+    else
+        return -1
+    end if
+end tell
+`;
+    const result = runMultilineAppleScript(script);
+    const id = parseInt(result, 10);
+    return id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export function activateTerminal(): void {
+  runAppleScript('tell application "Terminal" to activate');
+}
+
+export function getTerminalContent(): string {
+  const script = `
+tell application "Terminal"
+    if (count of windows) > 0 then
+        return contents of selected tab of front window
+    else
+        return ""
+    end if
+end tell
+`;
+  return runMultilineAppleScript(script);
+}
+
+export function typeText(text: string): void {
+  // Escape special characters for AppleScript
+  const escaped = text
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"');
+
+  const script = `
+tell application "System Events"
+    tell process "Terminal"
+        keystroke "${escaped}"
+    end tell
+end tell
+`;
+  runMultilineAppleScript(script);
+}
+
+// Key code mappings for special keys
+const KEY_CODES: Record<string, number> = {
+  enter: 36,
+  return: 36,
+  tab: 48,
+  escape: 53,
+  esc: 53,
+  space: 49,
+  delete: 51,
+  backspace: 51,
+  up: 126,
+  down: 125,
+  left: 123,
+  right: 124,
+  home: 115,
+  end: 119,
+  pageup: 116,
+  pagedown: 121,
+  f1: 122,
+  f2: 120,
+  f3: 99,
+  f4: 118,
+  f5: 96,
+  f6: 97,
+  f7: 98,
+  f8: 100,
+  f9: 101,
+  f10: 109,
+  f11: 103,
+  f12: 111,
+};
+
+export function sendKeystroke(key: string): void {
+  const lowerKey = key.toLowerCase();
+
+  // Handle modifier combinations like "ctrl+c", "alt+f", "shift+a"
+  if (key.includes("+")) {
+    const parts = key.split("+");
+    const modifier = parts[0].toLowerCase();
+    const mainKey = parts[1];
+
+    let modifierClause = "";
+    switch (modifier) {
+      case "ctrl":
+      case "control":
+        modifierClause = "using control down";
+        break;
+      case "alt":
+      case "option":
+        modifierClause = "using option down";
+        break;
+      case "shift":
+        modifierClause = "using shift down";
+        break;
+      case "cmd":
+      case "command":
+        modifierClause = "using command down";
+        break;
+      default:
+        throw new Error(`Unknown modifier: ${modifier}`);
+    }
+
+    // Check if mainKey is a special key or a character
+    const keyCode = KEY_CODES[mainKey.toLowerCase()];
+    let script: string;
+
+    if (keyCode !== undefined) {
+      script = `
+tell application "System Events"
+    tell process "Terminal"
+        key code ${keyCode} ${modifierClause}
+    end tell
+end tell
+`;
+    } else if (mainKey.length === 1) {
+      script = `
+tell application "System Events"
+    tell process "Terminal"
+        keystroke "${mainKey}" ${modifierClause}
+    end tell
+end tell
+`;
+    } else {
+      throw new Error(`Unknown key: ${mainKey}`);
+    }
+
+    runMultilineAppleScript(script);
+    return;
+  }
+
+  // Handle special keys
+  const keyCode = KEY_CODES[lowerKey];
+  if (keyCode !== undefined) {
+    const script = `
+tell application "System Events"
+    tell process "Terminal"
+        key code ${keyCode}
+    end tell
+end tell
+`;
+    runMultilineAppleScript(script);
+    return;
+  }
+
+  // Handle single character
+  if (key.length === 1) {
+    typeText(key);
+    return;
+  }
+
+  throw new Error(`Unknown key: ${key}`);
+}
+
+export function captureScreenshot(windowId: number): { data: string; mimeType: string } {
+  const tmpFile = join(tmpdir(), `poof-mcp-screenshot-${Date.now()}.jpg`);
+
+  try {
+    // Use screencapture with window ID
+    // -l: window ID, -x: no sound, -o: no shadow, -t jpg: JPEG format
+    execSync(`screencapture -l ${windowId} -x -o -t jpg "${tmpFile}"`, {
+      stdio: "pipe",
+    });
+
+    // Read the file and convert to base64
+    const buffer = readFileSync(tmpFile);
+    const base64 = buffer.toString("base64");
+
+    return {
+      data: base64,
+      mimeType: "image/jpeg",
+    };
+  } finally {
+    // Clean up temp file
+    try {
+      unlinkSync(tmpFile);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}
+
+export function closeTerminalWindow(): void {
+  const script = `
+tell application "Terminal"
+    if (count of windows) > 0 then
+        close front window
+    end if
+end tell
+`;
+  runMultilineAppleScript(script);
+}
+
+export function resizeTerminal(rows: number, cols: number): void {
+  const script = `
+tell application "Terminal"
+    if (count of windows) > 0 then
+        set number of rows of front window to ${rows}
+        set number of columns of front window to ${cols}
+    end if
+end tell
+`;
+  runMultilineAppleScript(script);
+}
