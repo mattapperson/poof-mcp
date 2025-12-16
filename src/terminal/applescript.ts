@@ -289,14 +289,21 @@ end tell
   throw new Error(`Unknown key: ${key}`);
 }
 
-export function captureScreenshot(windowId: number): { data: string; mimeType: string } {
+export function captureScreenshot(windowId?: number): { data: string; mimeType: string } {
   const tmpFile = join(tmpdir(), `poof-mcp-screenshot-${Date.now()}.jpg`);
 
+  // First, make sure Terminal is frontmost
+  activateTerminal();
+
   try {
-    // Use screencapture with window ID
-    // -l: window ID, -x: no sound, -o: no shadow, -t jpg: JPEG format
-    execSync(`screencapture -l ${windowId} -x -o -t jpg "${tmpFile}"`, {
+    // If we have a specific window ID, use it directly; otherwise get front window
+    const captureCmd = windowId
+      ? `screencapture -l${windowId} -x -o -t jpg "${tmpFile}"`
+      : `screencapture -l$(osascript -e 'tell app "Terminal" to id of window 1') -x -o -t jpg "${tmpFile}"`;
+
+    execSync(captureCmd, {
       stdio: "pipe",
+      timeout: 10000,
     });
 
     // Read the file and convert to base64
@@ -307,6 +314,10 @@ export function captureScreenshot(windowId: number): { data: string; mimeType: s
       data: base64,
       mimeType: "image/jpeg",
     };
+  } catch (e) {
+    throw new Error(
+      `Could not capture screenshot: ${e instanceof Error ? e.message : String(e)}`
+    );
   } finally {
     // Clean up temp file
     try {

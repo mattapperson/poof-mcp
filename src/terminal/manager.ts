@@ -70,12 +70,7 @@ export class TerminalManager {
 
   getScreenshot(sessionName: string): ScreenshotResult {
     this.ensureSessionOpen(sessionName);
-
-    if (!this.windowId) {
-      throw new Error("No Terminal window is open");
-    }
-
-    return applescript.captureScreenshot(this.windowId);
+    return applescript.captureScreenshot(this.windowId ?? undefined);
   }
 
   private ensureSessionOpen(sessionName: string): void {
