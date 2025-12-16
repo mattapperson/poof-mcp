@@ -17,6 +17,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "node-mac-permissions",
+  ],
   "packages": {
     "@hono/node-server": ["@hono/node-server@1.19.7", "", { "peerDependencies": { "hono": "^4" } }, "sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw=="],
 

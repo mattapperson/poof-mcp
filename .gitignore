@@ -6,8 +6,7 @@ out
 dist
 *.tgz
 
-# compiled binary
-poof-mcp
+# compiled binary (no longer used - using bin/poof-mcp script instead)
 
 # code coverage
 coverage

@@ -5,11 +5,12 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "poof-mcp": "./poof-mcp"
+    "poof-mcp": "./bin/poof-mcp"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build --compile src/index.ts --outfile poof-mcp"
+    "build": "chmod +x bin/poof-mcp",
+    "postinstall": "bun pm trust node-mac-permissions --all || true"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -22,5 +23,8 @@
     "node-mac-permissions": "^2.5.0",
     "screenshot-ftw": "^1.0.5",
     "zod": "^4.2.1"
-  }
+  },
+  "trustedDependencies": [
+    "node-mac-permissions"
+  ]
 }

@@ -313,7 +313,7 @@ export function getScreenRecordingStatus(): string {
 
 /**
  * Request Screen Recording permission.
- * On first call, shows the permission dialog.
+ * On first call, shows the native permission dialog.
  * On subsequent calls (if denied), opens System Settings.
  */
 export function requestScreenRecordingAccess(): void {

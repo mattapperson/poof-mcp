@@ -32,28 +32,21 @@ mv zmx ~/.local/bin/
 
 poof-mcp uses AppleScript and screencapture to control Terminal.app, which requires permissions:
 
-1. **System Settings → Privacy & Security → Accessibility**
-   - Add and enable the app running the MCP server (e.g., Claude, Terminal, iTerm2, VS Code)
+1. **Accessibility** - Required for keyboard input
+2. **Automation** - Required to control Terminal.app
+3. **Screen Recording** - Required for `get_screenshot` tool
 
-2. **System Settings → Privacy & Security → Automation**
-   - Allow the app to control **Terminal.app**
-
-3. **System Settings → Privacy & Security → Screen Recording** (for screenshots)
-   - Add and enable the app running the MCP server
-   - Required only for `get_screenshot` tool; `get_screen_text` works without this
-
-4. If prompted with a permissions dialog, click **OK** or **Allow**
-
-> **Note**: The MCP server returns clear error messages when permissions are missing.
+> **Note**: The MCP server will automatically request permissions when needed. On first use, you'll see native macOS permission dialogs. If permissions were previously denied, the server will open System Settings to the correct panel.
 
 ## Installation
 
 ```bash
-# Install dependencies
-bun install
+# Clone the repository
+git clone https://github.com/mattapperson/poof-mcp.git
+cd poof-mcp
 
-# Build standalone executable
-bun run build
+# Install dependencies (including native modules)
+bun install
 ```
 
 ## Usage
@@ -63,7 +56,7 @@ bun run build
 Add to your Claude Code MCP configuration:
 
 ```bash
-claude mcp add poof-mcp -- /path/to/poof-mcp
+claude mcp add poof-mcp -- /path/to/poof-mcp/bin/poof-mcp
 ```
 
 Or add to `~/.claude/claude_desktop_config.json`:
@@ -72,7 +65,7 @@ Or add to `~/.claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "poof-mcp": {
-      "command": "/path/to/poof-mcp"
+      "command": "/path/to/poof-mcp/bin/poof-mcp"
     }
   }
 }
@@ -81,9 +74,9 @@ Or add to `~/.claude/claude_desktop_config.json`:
 ### CLI
 
 ```bash
-poof-mcp --help     # Show help
-poof-mcp --version  # Show version
-poof-mcp            # Start MCP server (stdio)
+./bin/poof-mcp --help     # Show help
+./bin/poof-mcp --version  # Show version
+./bin/poof-mcp            # Start MCP server (stdio)
 ```
 
 ## MCP Tools
@@ -92,7 +85,7 @@ poof-mcp            # Start MCP server (stdio)
 |------|-------------|
 | `send_keystrokes` | Send key presses (e.g., `["enter"]`, `["up", "up", "enter"]`) |
 | `type_text` | Type a string |
-| `get_screenshot` | Get screen as base64 JPEG |
+| `get_screenshot` | Get screen as base64 PNG |
 | `get_screen_text` | Get screen as plain text |
 | `get_status` | Get terminal status |
 | `list_sessions` | List active sessions |
@@ -117,9 +110,6 @@ The `send_keystrokes` tool supports:
 ```bash
 # Run in development mode
 bun run dev
-
-# Build executable
-bun run build
 ```
 
 ## Architecture
@@ -140,7 +130,7 @@ macOS Terminal.app + zmx session
 
 1. **Session Management**: Uses [zmx](https://github.com/neurosnap/zmx) for terminal session persistence
 2. **Terminal Control**: AppleScript controls macOS Terminal.app for keystrokes and text input
-3. **Screen Capture**: `screencapture` command captures Terminal window as JPEG
+3. **Screen Capture**: Uses [screenshot-ftw](https://github.com/nicholasio/screenshot-ftw) to capture Terminal window as PNG
 4. **Text Extraction**: AppleScript reads Terminal.app content directly
 
 ## License
